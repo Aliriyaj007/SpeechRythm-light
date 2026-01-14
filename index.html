@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SpeechRythm | Intelligent Speaking Coach</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* ==================== CSS VARIABLES & RESET ==================== */
+        :root {
+            /* Theme: Ocean Blue */
+            --color-primary: #1a73e8;
+            --color-primary-dark: #0d47a1;
+            --color-secondary: #34a853;
+            --color-secondary-dark: #2e7d32;
+            --color-warning: #fbbc04;
+            --color-danger: #ea4335;
+            --color-surface: #ffffff;
+            --color-surface-variant: #f8f9fa;
+            --color-background: #f1f3f4;
+            --color-on-surface: #202124;
+            --color-on-surface-variant: #5f6368;
+            --color-on-primary: #ffffff;
+            --color-border: #dadce0;
+            --color-shadow: rgba(0, 0, 0, 0.1);
+            --color-highlight: rgba(26, 115, 232, 0.1);
+            
+            /* Typography */
+            --font-primary: 'Roboto', sans-serif;
+            --font-mono: 'Roboto Mono', monospace;
+            
+            /* Spacing & Radius */
+            --space-xs: 0.25rem;
+            --space-sm: 0.5rem;
+            --space-md: 1rem;
+            --space-lg: 1.5rem;
+            --space-xl: 2rem;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --radius-full: 999px;
+            
+            /* Transitions */
+            --transition-fast: 150ms ease;
+            --transition-medium: 300ms ease;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: var(--font-primary);
+            background-color: var(--color-background);
+            color: var(--color-on-surface);
+            line-height: 1.6;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden; /* App-like feel */
+        }
+
+        /* ==================== COMPONENTS ==================== */
+        button, .btn {
+            font-family: var(--font-primary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            background-color: var(--color-primary);
+            color: var(--color-on-primary);
+            border: none;
+            border-radius: var(--radius-md);
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        
+        button:hover:not(:disabled) { background-color: var(--color-primary-dark); transform: translateY(-1px); }
+        button:active:not(:disabled) { transform: translateY(0); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        
+        button.secondary { background-color: var(--color-secondary); }
+        button.secondary:hover:not(:disabled) { background-color: var(--color-secondary-dark); }
+        
+        button.outline { background-color: transparent; color: var(--color-primary); border: 2px solid var(--color-primary); }
+        button.outline:hover:not(:disabled) { background-color: var(--color-highlight); }
+
+        .card {
+            background-color: var(--color-surface);
+            border-radius: var(--radius-lg);
+            padding: var(--space-lg);
+            box-shadow: 0 1px 3px var(--color-shadow);
+            border: 1px solid var(--color-border);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none; width: 100%; height: 6px; background: var(--color-border);
+            border-radius: var(--radius-full); outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 18px; height: 18px; background: var(--color-primary);
+            border-radius: 50%; cursor: pointer; transition: transform 0.2s;
+        }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        /* ==================== LAYOUT ==================== */
+        header {
+            height: 64px; background-color: var(--color-surface); border-bottom: 1px solid var(--color-border);
+            display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-lg);
+            flex-shrink: 0; z-index: 10;
+        }
+
+        .logo { font-size: 1.25rem; font-weight: 700; color: var(--color-primary); display: flex; align-items: center; gap: 0.5rem; text-decoration: none; }
+
+        #main-container {
+            display: flex; flex: 1; overflow: hidden; height: calc(100vh - 64px);
+        }
+
+        #editor-panel {
+            flex: 1; display: flex; flex-direction: column; padding: var(--space-lg); overflow-y: auto; gap: var(--space-lg);
+        }
+
+        #controls-panel {
+            width: 350px; background-color: var(--color-surface); border-left: 1px solid var(--color-border);
+            display: flex; flex-direction: column; overflow-y: auto; padding: var(--space-lg); gap: var(--space-lg); flex-shrink: 0;
+        }
+
+        /* ==================== EDITOR & PROMPTER ==================== */
+        #speechInput {
+            width: 100%; flex: 1; min-height: 300px; resize: none; border: 2px solid var(--color-border);
+            border-radius: var(--radius-lg); padding: var(--space-lg); font-family: var(--font-primary);
+            font-size: 1.1rem; line-height: 1.6; outline: none; transition: border-color 0.2s;
+        }
+        #speechInput:focus { border-color: var(--color-primary); }
+
+        /* ==================== PRACTICE OVERLAY (CRITICAL FIXES) ==================== */
+        .practice-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: var(--color-surface); z-index: 1000;
+            display: flex; flex-direction: column;
+            transform: translateY(100%); transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+        
+        .practice-overlay.active { transform: translateY(0); }
+
+        .practice-header {
+            height: 64px; padding: 0 var(--space-xl); display: flex; align-items: center;
+            justify-content: space-between; border-bottom: 1px solid var(--color-border); background: var(--color-surface);
+        }
+
+        .practice-body {
+            flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: var(--space-xl); overflow: hidden; position: relative;
+        }
+
+        /* The Prompter Text Area */
+        .practice-prompter {
+            width: 100%; max-width: 900px; height: 60vh; overflow-y: auto;
+            font-size: 1.5rem; line-height: 2; text-align: center;
+            padding: var(--space-xl) 0; scroll-behavior: smooth;
+            /* Enhance readability */
+            color: #333; 
+        }
+
+        /* The Active Sentence */
+        .practice-sentence {
+            display: inline-block; padding: 0.2rem 0.5rem; border-radius: 4px; transition: all 0.3s ease;
+            margin: 0.2rem 0;
+        }
+
+        .practice-sentence.active {
+            background-color: rgba(26, 115, 232, 0.15); color: var(--color-primary-dark);
+            transform: scale(1.02); font-weight: 500; box-shadow: 0 2px 10px rgba(26, 115, 232, 0.1);
+        }
+
+        /* Pacing Dot Track */
+        .pacing-track-container {
+            width: 100%; max-width: 800px; margin-bottom: var(--space-xl); text-align: center;
+        }
+        .pacing-track {
+            width: 100%; height: 6px; background: var(--color-border); border-radius: var(--radius-full);
+            position: relative; overflow: hidden; margin: 0 auto var(--space-md);
+        }
+        .pacing-dot {
+            width: 20px; height: 20px; background: var(--color-primary); border-radius: 50%;
+            position: absolute; top: 50%; left: 0; transform: translate(-50%, -50%);
+            transition: left 0.2s linear, background-color 0.3s; box-shadow: 0 0 10px rgba(26,115,232,0.4);
+        }
+        .pacing-dot.warning { background-color: var(--color-danger); }
+
+        /* Timer Display */
+        .timer-display {
+            font-family: var(--font-mono); font-size: 4rem; font-weight: 700; color: var(--color-primary);
+            font-variant-numeric: tabular-nums; margin-bottom: var(--space-md);
+        }
+        .timer-display.overtime { color: var(--color-danger); }
+
+        /* Controls Row */
+        .practice-controls { display: flex; gap: var(--space-lg); margin-top: var(--space-lg); }
+
+        /* ==================== UTILITY & STATS ==================== */
+        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); }
+        .stat-item { background: var(--color-surface-variant); padding: var(--space-md); border-radius: var(--radius-md); text-align: center; }
+        .stat-value { font-size: 1.5rem; font-weight: 700; color: var(--color-primary); display: block; }
+        .stat-label { font-size: 0.8rem; color: var(--color-on-surface-variant); text-transform: uppercase; letter-spacing: 0.5px; }
+
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--color-primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            #main-container { flex-direction: column; overflow-y: auto; }
+            #controls-panel { width: 100%; border-left: none; border-top: 1px solid var(--color-border); height: auto; overflow: visible; }
+            #editor-panel { min-height: 500px; }
+            .practice-prompter { font-size: 1.2rem; }
+        }
+
+        /* Toast Notification */
+        #toast-container {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            z-index: 2000; display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+        }
+        .toast {
+            background-color: #323232; color: white; padding: 12px 24px; border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); font-size: 0.9rem; opacity: 0;
+            transform: translateY(20px); transition: all 0.3s ease;
+        }
+        .toast.show { opacity: 1; transform: translateY(0); }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <a href="#" class="logo">
+            <i class="fas fa-microphone-alt"></i> SpeechRythm
+        </a>
+        <div style="display: flex; gap: var(--space-sm);">
+            <button class="outline" id="guideBtn"><i class="fas fa-book"></i> Guide</button>
+            <button class="secondary" id="practiceBtn"><i class="fas fa-play"></i> Practice Mode</button>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <div id="main-container">
+        
+        <!-- Editor Panel -->
+        <section id="editor-panel">
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 1rem; align-items: center;">
+                    <h3 style="color: var(--color-primary);"><i class="fas fa-pen"></i> Your Speech</h3>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="outline" id="loadExampleBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Load Example</button>
+                        <button class="outline" id="clearBtn" style="padding: 0.25rem 0.5rem; font-size: 0.8rem;">Clear</button>
+                    </div>
+                </div>
+                <textarea id="speechInput" placeholder="Paste your speech here..."></textarea>
+                <div style="margin-top: 0.5rem; color: var(--color-on-surface-variant); font-size: 0.9rem;">
+                    <i class="fas fa-info-circle"></i> Use (PAUSE) or (SLOW) tags in your text for specific cues.
+                </div>
+            </div>
+        </section>
+
+        <!-- Controls Panel -->
+        <section id="controls-panel">
+            <!-- Stats -->
+            <div class="card">
+                <h3 style="color: var(--color-primary); margin-bottom: 1rem;"><i class="fas fa-chart-bar"></i> Statistics</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-value" id="wordCount">0</span>
+                        <span class="stat-label">Words</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="readTime">0:00</span>
+                        <span class="stat-label">Est. Time</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings -->
+            <div class="card">
+                <h3 style="color: var(--color-primary); margin-bottom: 1rem;"><i class="fas fa-sliders-h"></i> Controls</h3>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <label style="font-weight: 500;">Speaking Rate (WPM)</label>
+                        <span id="wpmDisplay" style="font-family: var(--font-mono); color: var(--color-primary);">150 WPM</span>
+                    </div>
+                    <input type="range" id="wpmSlider" min="60" max="220" value="150">
+                </div>
+
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                        <label style="font-weight: 500;">Target Time (Min)</label>
+                        <span id="targetDisplay" style="font-family: var(--font-mono); color: var(--color-primary);">5:00</span>
+                    </div>
+                    <input type="range" id="targetSlider" min="1" max="60" value="5">
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem;">
+                    <span>Metronome</span>
+                    <label class="switch">
+                        <input type="checkbox" id="metronomeToggle">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>Visual Pacing</span>
+                    <label class="switch">
+                        <input type="checkbox" id="pacingToggle" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Action -->
+            <button id="startPracticeBtn" class="secondary" style="width: 100%; justify-content: center; padding: 1rem;">
+                <i class="fas fa-play-circle"></i> Start Session
+            </button>
+        </section>
+    </div>
+
+    <!-- Practice Overlay -->
+    <div class="practice-overlay" id="practiceOverlay">
+        <div class="practice-header">
+            <div style="font-weight: 700; color: var(--color-primary);">
+                <i class="fas fa-stopwatch"></i> Practice Session
+            </div>
+            <button class="outline" id="exitPracticeBtn"><i class="fas fa-times"></i> Exit</button>
+        </div>
+        
+        <div class="practice-body">
+            <div class="pacing-track-container">
+                <div class="timer-display" id="practiceTimer">0:00</div>
+                <div class="pacing-track">
+                    <div class="pacing-dot" id="pacingDot"></div>
+                </div>
+            </div>
+
+            <!-- This is the scrolling text area -->
+            <div class="practice-prompter" id="practicePrompter">
+                <!-- Content injected via JS -->
+            </div>
+
+            <div class="practice-controls">
+                <button class="secondary" id="playPauseBtn"><i class="fas fa-play"></i> Start</button>
+                <button class="outline" id="resetBtn"><i class="fas fa-redo"></i> Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script>
+        /**
+         * SPEECHRYTHM - PRACTICE MODE FIXED
+         * Single File Architecture
+         */
+
+        // ================== STATE MANAGEMENT ==================
+        const State = {
+            text: '',
+            wpm: 150,
+            targetMinutes: 5,
+            isMetronomeOn: false,
+            isPacingOn: true,
+            wordCount: 0,
+            sentences: [],
+            
+            // Practice Runtime State
+            isRunning: false,
+            startTime: 0,
+            elapsedTime: 0, // in seconds
+            timerInterval: null,
+            metronomeInterval: null,
+            audioCtx: null
+        };
+
+        // ================== AUDIO ENGINE ==================
+        const AudioEngine = {
+            init: function() {
+                if (!State.audioCtx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    State.audioCtx = new AudioContext();
+                }
+                // Resume context if suspended (browser policy)
+                if (State.audioCtx.state === 'suspended') {
+                    State.audioCtx.resume();
+                }
+            },
+
+            playClick: function() {
+                if (!State.audioCtx) return;
+                
+                const t = State.audioCtx.currentTime;
+                const osc = State.audioCtx.createOscillator();
+                const gain = State.audioCtx.createGain();
+
+                osc.connect(gain);
+                gain.connect(State.audioCtx.destination);
+
+                osc.frequency.setValueAtTime(1000, t);
+                osc.frequency.exponentialRampToValueAtTime(800, t + 0.05);
+                
+                gain.gain.setValueAtTime(0.1, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
+
+                osc.start(t);
+                osc.stop(t + 0.06);
+            },
+
+            startMetronome: function() {
+                if (!State.isMetronomeOn) return;
+                this.init();
+                this.playClick(); // Immediate click
+                
+                // Calculate interval in ms based on WPM
+                // WPM = words per minute. Assume 1 beat per word roughly for pacing.
+                // Or more accurately, standard 4/4 time. 
+                // Simple approach: Interval = 60000 / WPM (1 beat per word)
+                const intervalMs = 60000 / State.wpm;
+
+                State.metronomeInterval = setInterval(() => {
+                    this.playClick();
+                }, intervalMs);
+            },
+
+            stopMetronome: function() {
+                if (State.metronomeInterval) {
+                    clearInterval(State.metronomeInterval);
+                    State.metronomeInterval = null;
+                }
+            }
+        };
+
+        // ================== UTILITIES ==================
+        const Utils = {
+            countWords: (text) => {
+                return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+            },
+
+            parseSentences: (text) => {
+                // Regex splits by punctuation, but keeps delimiters attached slightly
+                // Simplified split for display
+                const raw = text.match( /[^\.!\?]+[\.!\?]+/g ) || [text];
+                return raw.map(s => s.trim()).filter(s => s.length > 0);
+            },
+
+            formatTime: (seconds) => {
+                const m = Math.floor(seconds / 60);
+                const s = Math.floor(seconds % 60);
+                return `${m}:${s.toString().padStart(2, '0')}`;
+            },
+
+            toast: (message, type = 'info') => {
+                const container = document.getElementById('toast-container');
+                const toast = document.createElement('div');
+                toast.className = 'toast';
+                toast.textContent = message;
+                
+                if(type === 'error') toast.style.borderLeft = '4px solid var(--color-danger)';
+                else toast.style.borderLeft = '4px solid var(--color-primary)';
+
+                container.appendChild(toast);
+                
+                // Trigger reflow for animation
+                void toast.offsetWidth; 
+                toast.classList.add('show');
+
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                    setTimeout(() => toast.remove(), 300);
+                }, 3000);
+            }
+        };
+
+        // ================== DOM ELEMENTS ==================
+        const UI = {
+            input: document.getElementById('speechInput'),
+            wordCount: document.getElementById('wordCount'),
+            readTime: document.getElementById('readTime'),
+            wpmSlider: document.getElementById('wpmSlider'),
+            wpmDisplay: document.getElementById('wpmDisplay'),
+            targetSlider: document.getElementById('targetSlider'),
+            targetDisplay: document.getElementById('targetDisplay'),
+            
+            overlay: document.getElementById('practiceOverlay'),
+            prompter: document.getElementById('practicePrompter'),
+            timer: document.getElementById('practiceTimer'),
+            pacingDot: document.getElementById('pacingDot'),
+            playPauseBtn: document.getElementById('playPauseBtn'),
+            
+            toggles: {
+                metronome: document.getElementById('metronomeToggle'),
+                pacing: document.getElementById('pacingToggle')
+            }
+        };
+
+        // ================== CORE LOGIC ==================
+        
+        function updateStats() {
+            State.text = UI.input.value;
+            State.wordCount = Utils.countWords(State.text);
+            State.sentences = Utils.parseSentences(State.text);
+
+            UI.wordCount.textContent = State.wordCount;
+            
+            // Calculate estimated time
+            const estSeconds = (State.wordCount / State.wpm) * 60;
+            UI.readTime.textContent = Utils.formatTime(estSeconds);
+        }
+
+        function preparePrompter() {
+            if (!State.text.trim()) return false;
+
+            // Clear prompter
+            UI.prompter.innerHTML = '';
+
+            // Create span for each sentence
+            // We also need to map sentence cumulative word count for tracking
+            let accumulatedWords = 0;
+            const sentenceData = [];
+
+            State.sentences.forEach((sentence, index) => {
+                const span = document.createElement('span');
+                span.textContent = sentence + ' ';
+                span.className = 'practice-sentence';
+                span.id = `sent-${index}`;
+                UI.prompter.appendChild(span);
+
+                const wordsInSentence = Utils.countWords(sentence);
+                accumulatedWords += wordsInSentence;
+                
+                sentenceData.push({
+                    id: index,
+                    words: wordsInSentence,
+                    cumulativeEnd: accumulatedWords,
+                    element: span
+                });
+            });
+
+            // Store mapping in runtime state
+            State.runtimeSentences = sentenceData;
+            return true;
+        }
+
+        // ================== PRACTICE MODE CONTROLLER ==================
+
+        const Practice = {
+            start: function() {
+                if (State.isRunning) return;
+
+                if (!preparePrompter()) {
+                    Utils.toast("Please enter some text to practice.", "error");
+                    return;
+                }
+
+                AudioEngine.init(); // Initialize Audio Context on user gesture
+                
+                State.isRunning = true;
+                State.startTime = Date.now() - (State.elapsedTime * 1000);
+                
+                // UI Updates
+                UI.playPauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+                UI.playPauseBtn.classList.add('secondary');
+                UI.playPauseBtn.classList.remove('outline'); // Highlight active
+                
+                if (State.isMetronomeOn) AudioEngine.startMetronome();
+
+                // Start Timer Loop
+                State.timerInterval = setInterval(() => {
+                    Practice.tick();
+                }, 50); // Update every 50ms for smooth UI
+            },
+
+            pause: function() {
+                if (!State.isRunning) return;
+
+                State.isRunning = false;
+                clearInterval(State.timerInterval);
+                AudioEngine.stopMetronome();
+
+                // UI Updates
+                UI.playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+                UI.playPauseBtn.classList.add('outline');
+                UI.playPauseBtn.classList.remove('secondary');
+            },
+
+            reset: function() {
+                Practice.pause();
+                State.elapsedTime = 0;
+                Practice.updateVisuals(0);
+                
+                // Reset highlighting
+                document.querySelectorAll('.practice-sentence.active').forEach(el => el.classList.remove('active'));
+                UI.prompter.scrollTop = 0;
+                
+                UI.playPauseBtn.innerHTML = '<i class="fas fa-play"></i> Start';
+            },
+
+            exit: function() {
+                Practice.pause();
+                UI.overlay.classList.remove('active');
+                document.body.style.overflow = ''; // Restore scroll
+            },
+
+            tick: function() {
+                const now = Date.now();
+                const diff = (now - State.startTime) / 1000;
+                State.elapsedTime = diff;
+
+                Practice.updateVisuals(diff);
+                Practice.trackSentence(diff);
+            },
+
+            updateVisuals: function(seconds) {
+                // 1. Timer Text
+                UI.timer.textContent = Utils.formatTime(seconds);
+                
+                const targetSeconds = State.targetMinutes * 60;
+
+                // 2. Overtime Warning
+                if (seconds > targetSeconds) {
+                    UI.timer.classList.add('overtime');
+                    UI.pacingDot.classList.add('warning');
+                } else {
+                    UI.timer.classList.remove('overtime');
+                    UI.pacingDot.classList.remove('warning');
+                }
+
+                // 3. Pacing Dot
+                if (State.isPacingOn) {
+                    // Calculate percentage relative to TARGET TIME (not read time)
+                    // This helps you see if you are over/under your target
+                    let pct = (seconds / targetSeconds) * 100;
+                    if (pct > 100) pct = 100;
+                    
+                    // Or: Map relative to estimated reading time? 
+                    // Let's stick to Target Time as requested by "Target" slider usually implies a limit.
+                    // However, for a "prompter", mapping to ESTIMATED TIME is more useful for scrolling.
+                    // Let's do ESTIMATED TIME for the dot position, but color change for TARGET.
+                    
+                    const estTotalSeconds = (State.wordCount / State.wpm) * 60 || 1;
+                    let progressPct = (seconds / estTotalSeconds) * 100;
+                    if(progressPct > 100) progressPct = 100;
+
+                    UI.pacingDot.style.left = `${progressPct}%`;
+                } else {
+                    UI.pacingDot.style.opacity = 0;
+                }
+            },
+
+            trackSentence: function(seconds) {
+                // Determine which sentence should be highlighted based on current time vs estimated reading position
+                
+                // Words spoken so far
+                const wordsSpoken = (State.wpm / 60) * seconds;
+                
+                // Find sentence where wordsSpoken falls
+                const currentSent = State.runtimeSentences.find(s => wordsSpoken <= s.cumulativeEnd);
+                
+                if (currentSent) {
+                    const prevActive = document.querySelector('.practice-sentence.active');
+                    
+                    if (prevActive && prevActive.id === `sent-${currentSent.id}`) {
+                        // Already active, do nothing (performance)
+                        return;
+                    }
+
+                    if (prevActive) prevActive.classList.remove('active');
+                    
+                    const newActive = document.getElementById(`sent-${currentSent.id}`);
+                    if (newActive) {
+                        newActive.classList.add('active');
+                        
+                        // Auto Scroll
+                        // Center the element in the view
+                        newActive.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }
+                }
+            }
+        };
+
+        // ================== EVENT LISTENERS ==================
+
+        function initEvents() {
+            // Editor Changes
+            UI.input.addEventListener('input', updateStats);
+            
+            // Sliders
+            UI.wpmSlider.addEventListener('input', (e) => {
+                State.wpm = parseInt(e.target.value);
+                UI.wpmDisplay.textContent = `${State.wpm} WPM`;
+                updateStats();
+                // If running, restart metronome to update tempo
+                if (State.isRunning && State.isMetronomeOn) {
+                    AudioEngine.stopMetronome();
+                    AudioEngine.startMetronome();
+                }
+            });
+
+            UI.targetSlider.addEventListener('input', (e) => {
+                State.targetMinutes = parseInt(e.target.value);
+                UI.targetDisplay.textContent = `${State.targetMinutes}:00`;
+            });
+
+            // Toggles
+            UI.toggles.metronome.addEventListener('change', (e) => {
+                State.isMetronomeOn = e.target.checked;
+                if (State.isRunning) {
+                    if (State.isMetronomeOn) AudioEngine.startMetronome();
+                    else AudioEngine.stopMetronome();
+                }
+            });
+
+            UI.toggles.pacing.addEventListener('change', (e) => {
+                State.isPacingOn = e.target.checked;
+                UI.pacingDot.style.opacity = State.isPacingOn ? 1 : 0;
+            });
+
+            // Practice Mode Entry
+            document.getElementById('practiceBtn').addEventListener('click', () => {
+                if (!State.text.trim()) {
+                    Utils.toast("Please enter speech text first!", "error");
+                    UI.input.focus();
+                    return;
+                }
+                UI.overlay.classList.add('active');
+                document.body.style.overflow = 'hidden'; // Lock background scroll
+                Practice.reset(); // Init fresh
+            });
+
+            document.getElementById('startPracticeBtn').addEventListener('click', () => {
+                document.getElementById('practiceBtn').click();
+            });
+
+            // Overlay Controls
+            UI.playPauseBtn.addEventListener('click', () => {
+                if (State.isRunning) Practice.pause();
+                else Practice.start();
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', Practice.reset);
+            document.getElementById('exitPracticeBtn').addEventListener('click', Practice.exit);
+
+            // Helper Buttons
+            document.getElementById('clearBtn').addEventListener('click', () => {
+                if(confirm('Clear all text?')) {
+                    UI.input.value = '';
+                    updateStats();
+                }
+            });
+
+            document.getElementById('loadExampleBtn').addEventListener('click', () => {
+                UI.input.value = `Good morning everyone, and thank you for being here today.
+
+I want to talk to you about the future of technology. It is not just about faster computers or smarter phones. It is about how we, as humans, connect with one another.
+
+We stand at a precipice. (PAUSE) Behind us is the familiar, the comfortable. Ahead of us is the unknown, but also the infinite potential.
+
+To move forward, we need three things: Courage, curiosity, and compassion.
+
+First, courage. The courage to try new things even when we are afraid of failing.
+Second, curiosity. The desire to ask "why" and "how" and "what if".
+Third, compassion. The understanding that technology should serve humanity, not the other way around.
+
+If we hold these three pillars high, there is no limit to what we can achieve together.
+
+Thank you.`;
+                updateStats();
+                Utils.toast("Example loaded");
+            });
+
+            // Guide Button
+            document.getElementById('guideBtn').addEventListener('click', () => {
+                Utils.toast("Type your speech, set your speed, and click Practice!");
+            });
+        }
+
+        // ================== INITIALIZATION ==================
+        window.addEventListener('DOMContentLoaded', () => {
+            initEvents();
+            updateStats(); // Initialize stats
+        });
+
+    </script>
+</body>
+</html>
